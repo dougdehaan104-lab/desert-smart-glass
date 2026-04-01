@@ -1,22 +1,39 @@
-export const runtime = 'nodejs';
-
 export async function POST(request) {
   try {
     const data = await request.json();
 
-    // Basic validation to ensure we have a contact point
-    if (!data.email && !data.phone) {
+    if (!process.env.GHL_WEBHOOK_URL) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Missing GHL_WEBHOOK_URL env var.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const payload = {
+      contact: {
+        firstName: data.contact?.firstName || data.firstName || '',
+        lastName: data.contact?.lastName || data.lastName || '',
+        phone: data.contact?.phone || data.phone || '',
+        email: data.contact?.email || data.email || '',
+      },
+      projectType: data.projectType || '',
+      timeline: data.timeline || '',
+      preferredContactMethod: data.preferredContactMethod || '',
+      projectNotes: data.projectNotes || '',
+      leadSource: data.leadSource || 'Desert Smart Glass Consult Widget',
+    };
+
+    if (!payload.contact.email && !payload.contact.phone) {
       return new Response(
         JSON.stringify({ ok: false, error: 'Email or phone is required.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // This sends the data to the secret GHL URL you'll set in Vercel later
     const ghlRes = await fetch(process.env.GHL_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     const text = await ghlRes.text();
